@@ -1,0 +1,12 @@
+services:
+  source-db:
+    image: postgres:18
+    container_name: data-kata-source-db
+    environment:
+      POSTGRES_DB: salesdb
+      POSTGRES_USER: sales_user
+      POSTGRES_PASSWORD: sales_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/source-db/init.sql:/docker-entrypoint-initdb.d/init.sql

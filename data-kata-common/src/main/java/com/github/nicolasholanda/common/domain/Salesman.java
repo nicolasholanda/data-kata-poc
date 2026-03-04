@@ -1,4 +1,4 @@
 package com.github.nicolasholanda.common.domain;
 
-public record Salesman(long id, String name, String region) {
+public record Salesman(long id, String name) {
 }
