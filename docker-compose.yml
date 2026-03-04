@@ -10,3 +10,10 @@ services:
       - "5432:5432"
     volumes:
       - ./docker/source-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  soap-mock:
+    build: ./docker/soap-mock
+    container_name: data-kata-soap-mock
+    ports:
+      - "8090:8090"
+      - "8091:8091"
