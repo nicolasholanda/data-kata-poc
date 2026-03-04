@@ -11,4 +11,21 @@
     </parent>
 
     <artifactId>data-kata-ingestion</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.github.nicolasholanda</groupId>
+            <artifactId>data-kata-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.13</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+    </dependencies>
 </project>
