@@ -1,0 +1,29 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Claude
+.claude/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Eclipse
+.eclipse/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
