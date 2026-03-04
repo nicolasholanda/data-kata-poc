@@ -11,6 +11,18 @@ services:
     volumes:
       - ./docker/source-db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
+  output-db:
+    image: postgres:18
+    container_name: data-kata-output-db
+    environment:
+      POSTGRES_DB: warehousedb
+      POSTGRES_USER: warehouse_user
+      POSTGRES_PASSWORD: warehouse_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./docker/output-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
   soap-mock:
     build: ./docker/soap-mock
     container_name: data-kata-soap-mock
