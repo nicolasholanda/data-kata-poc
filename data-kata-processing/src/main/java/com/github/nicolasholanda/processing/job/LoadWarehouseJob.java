@@ -10,11 +10,10 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
 import static com.github.nicolasholanda.common.Columns.*;
-import static org.apache.spark.sql.functions.col;
 
 public class LoadWarehouseJob {
 
-    public static void run(SparkSession spark, DataSources sources, WarehouseWriter writer) {
+    public static void run(DataSources sources, WarehouseWriter writer) {
         writer.overwrite(buildFactSales(sources), Tables.FACT_SALES);
         writer.overwrite(sources.cities(), Tables.DIM_CITY);
         writer.overwrite(sources.salesmen(), Tables.DIM_SALESMAN);
@@ -42,6 +41,6 @@ public class LoadWarehouseJob {
 
     public static void main(String[] args) {
         SparkSession spark = SparkSessionFactory.create();
-        run(spark, new DataSources(spark), new WarehouseWriter(WarehouseConfig.fromEnv()));
+        run(new DataSources(spark), new WarehouseWriter(WarehouseConfig.fromEnv()));
     }
 }
