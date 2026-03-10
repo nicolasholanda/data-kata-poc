@@ -1,0 +1,78 @@
+from datetime import datetime, timedelta
+
+from airflow import DAG
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+
+JAR_PATH = "/opt/spark-apps/data-kata-processing-1.0.0-SNAPSHOT.jar"
+
+WAREHOUSE_ENV = {
+    "WAREHOUSE_URL": "jdbc:postgresql://output-db:5432/warehousedb",
+    "WAREHOUSE_USER": "warehouse_user",
+    "WAREHOUSE_PASSWORD": "warehouse_pass",
+}
+
+SPARK_CONF = {
+    "spark.driver.host": "airflow-scheduler",
+    "spark.driver.bindAddress": "0.0.0.0",
+}
+
+with DAG(
+    dag_id="data_kata_pipeline",
+    schedule="@daily",
+    start_date=datetime(2024, 1, 1),
+    catchup=False,
+    default_args={
+        "retries": 1,
+        "retry_delay": timedelta(minutes=5),
+    },
+) as dag:
+
+    load_warehouse = SparkSubmitOperator(
+        task_id="load_warehouse",
+        application=JAR_PATH,
+        java_class="com.github.nicolasholanda.processing.job.LoadWarehouseJob",
+        conn_id="spark_default",
+        conf=SPARK_CONF,
+        env_vars={
+            **WAREHOUSE_ENV,
+            "SOURCE_DB_URL": "jdbc:postgresql://source-db:5432/salesdb",
+            "SOURCE_DB_USER": "sales_user",
+            "SOURCE_DB_PASSWORD": "sales_pass",
+            "CITIES_FILE_PATH": "/data/files/cities.csv",
+            "PRODUCTS_FILE_PATH": "/data/files/products.csv",
+            "SOAP_SERVICE_URL": "http://soap-mock:8090/salesmanservice",
+            "SOAP_NAMESPACE": "http://soapmock.nicolasholanda.github.com/",
+            "SOAP_SERVICE_NAME": "SalesmanService",
+            "SOAP_PORT_NAME": "SalesmanServicePort",
+        },
+    )
+
+    top_sales_by_city = SparkSubmitOperator(
+        task_id="top_sales_by_city",
+        application=JAR_PATH,
+        java_class="com.github.nicolasholanda.processing.job.TopSalesByCityJob",
+        conn_id="spark_default",
+        conf=SPARK_CONF,
+        env_vars={
+            **WAREHOUSE_ENV,
+            "START_DATE": "{{ (data_interval_start - macros.timedelta(days=30)).strftime('%Y-%m-%d') }}",
+            "END_DATE": "{{ data_interval_end.strftime('%Y-%m-%d') }}",
+            "TOP_N": "10",
+        },
+    )
+
+    top_salesman = SparkSubmitOperator(
+        task_id="top_salesman",
+        application=JAR_PATH,
+        java_class="com.github.nicolasholanda.processing.job.TopSalesmanJob",
+        conn_id="spark_default",
+        conf=SPARK_CONF,
+        env_vars={
+            **WAREHOUSE_ENV,
+            "START_DATE": "{{ (data_interval_start - macros.timedelta(days=30)).strftime('%Y-%m-%d') }}",
+            "END_DATE": "{{ data_interval_end.strftime('%Y-%m-%d') }}",
+            "TOP_N": "10",
+        },
+    )
+
+    load_warehouse >> [top_sales_by_city, top_salesman]
