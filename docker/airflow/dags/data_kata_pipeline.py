@@ -25,6 +25,11 @@ with DAG(
         "retries": 1,
         "retry_delay": timedelta(minutes=5),
     },
+    params={
+        "start_date": "{{ (data_interval_start - macros.timedelta(days=30)).strftime('%Y-%m-%d') }}",
+        "end_date": "{{ data_interval_end.strftime('%Y-%m-%d') }}",
+        "top_n": "10",
+    },
 ) as dag:
 
     load_warehouse = SparkSubmitOperator(
@@ -55,9 +60,9 @@ with DAG(
         conf=SPARK_CONF,
         env_vars={
             **WAREHOUSE_ENV,
-            "START_DATE": "{{ (data_interval_start - macros.timedelta(days=30)).strftime('%Y-%m-%d') }}",
-            "END_DATE": "{{ data_interval_end.strftime('%Y-%m-%d') }}",
-            "TOP_N": "10",
+            "START_DATE": "{{ params.start_date }}",
+            "END_DATE": "{{ params.end_date }}",
+            "TOP_N": "{{ params.top_n }}",
         },
     )
 
@@ -69,9 +74,9 @@ with DAG(
         conf=SPARK_CONF,
         env_vars={
             **WAREHOUSE_ENV,
-            "START_DATE": "{{ (data_interval_start - macros.timedelta(days=30)).strftime('%Y-%m-%d') }}",
-            "END_DATE": "{{ data_interval_end.strftime('%Y-%m-%d') }}",
-            "TOP_N": "10",
+            "START_DATE": "{{ params.start_date }}",
+            "END_DATE": "{{ params.end_date }}",
+            "TOP_N": "{{ params.top_n }}",
         },
     )
 

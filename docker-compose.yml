@@ -131,5 +131,20 @@ services:
       - ./docker/file-source:/data/files
       - airflow-logs:/opt/airflow/logs
 
+  api:
+    image: eclipse-temurin:21-jre
+    container_name: data-kata-api
+    depends_on:
+      - output-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://output-db:5432/warehousedb
+      SPRING_DATASOURCE_USERNAME: warehouse_user
+      SPRING_DATASOURCE_PASSWORD: warehouse_pass
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data-kata-api/target/data-kata-api-1.0.0-SNAPSHOT.jar:/app/app.jar
+    command: java -jar /app/app.jar
+
 volumes:
   airflow-logs:
