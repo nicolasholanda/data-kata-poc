@@ -128,6 +128,7 @@ services:
     volumes:
       - ./docker/airflow/dags:/opt/airflow/dags
       - ./data-kata-processing/target:/opt/spark-apps
+      - ./docker/file-source:/data/files
       - airflow-logs:/opt/airflow/logs
 
 volumes:
