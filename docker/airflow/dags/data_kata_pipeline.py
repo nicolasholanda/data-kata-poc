@@ -14,7 +14,13 @@ WAREHOUSE_ENV = {
 SPARK_CONF = {
     "spark.driver.host": "airflow-scheduler",
     "spark.driver.bindAddress": "0.0.0.0",
+    "spark.extraListeners": "io.openlineage.spark.agent.OpenLineageSparkListener",
+    "spark.openlineage.transport.type": "http",
+    "spark.openlineage.transport.url": "http://marquez-api:5000",
+    "spark.openlineage.namespace": "data-kata",
 }
+
+OPENLINEAGE_PACKAGES = "io.openlineage:openlineage-spark_2.13:1.44.0"
 
 with DAG(
     dag_id="data_kata_pipeline",
@@ -38,6 +44,7 @@ with DAG(
         java_class="com.github.nicolasholanda.processing.job.LoadWarehouseJob",
         conn_id="spark_default",
         conf=SPARK_CONF,
+        packages=OPENLINEAGE_PACKAGES,
         env_vars={
             **WAREHOUSE_ENV,
             "SOURCE_DB_URL": "jdbc:postgresql://source-db:5432/salesdb",
@@ -58,6 +65,7 @@ with DAG(
         java_class="com.github.nicolasholanda.processing.job.TopSalesByCityJob",
         conn_id="spark_default",
         conf=SPARK_CONF,
+        packages=OPENLINEAGE_PACKAGES,
         env_vars={
             **WAREHOUSE_ENV,
             "START_DATE": "{{ params.start_date }}",
@@ -72,6 +80,7 @@ with DAG(
         java_class="com.github.nicolasholanda.processing.job.TopSalesmanJob",
         conn_id="spark_default",
         conf=SPARK_CONF,
+        packages=OPENLINEAGE_PACKAGES,
         env_vars={
             **WAREHOUSE_ENV,
             "START_DATE": "{{ params.start_date }}",

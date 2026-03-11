@@ -6,6 +6,8 @@ x-airflow-env: &airflow-env
   AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
   AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-api-server:8080/execution/"
   AIRFLOW__API_AUTH__JWT_SECRET: "data-kata-jwt-secret-key-shared"
+  AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type":"http","url":"http://marquez-api:5000","endpoint":"api/v1/lineage"}'
+  AIRFLOW__OPENLINEAGE__NAMESPACE: data-kata
 
 services:
   source-db:
@@ -122,6 +124,8 @@ services:
         condition: service_completed_successfully
       spark-master:
         condition: service_started
+      marquez-api:
+        condition: service_started
     environment:
       <<: *airflow-env
     command: airflow scheduler
@@ -145,6 +149,49 @@ services:
     volumes:
       - ./data-kata-api/target/data-kata-api-1.0.0-SNAPSHOT.jar:/app/app.jar
     command: java -jar /app/app.jar
+
+  marquez-db:
+    image: postgres:18
+    container_name: data-kata-marquez-db
+    environment:
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marquez"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  marquez-api:
+    image: marquezproject/marquez:0.50.0
+    container_name: data-kata-marquez-api
+    depends_on:
+      marquez-db:
+        condition: service_healthy
+    environment:
+      MARQUEZ_PORT: 5000
+      MARQUEZ_ADMIN_PORT: 5001
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+
+  marquez-web:
+    image: marquezproject/marquez-web:0.50.0
+    container_name: data-kata-marquez-web
+    depends_on:
+      - marquez-api
+    environment:
+      MARQUEZ_HOST: marquez-api
+      MARQUEZ_PORT: 5000
+      WEB_PORT: 3000
+    ports:
+      - "3000:3000"
 
 volumes:
   airflow-logs:
