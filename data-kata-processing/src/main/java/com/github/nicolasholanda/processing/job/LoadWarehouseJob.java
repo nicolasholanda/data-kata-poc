@@ -4,41 +4,36 @@ import com.github.nicolasholanda.common.Tables;
 import com.github.nicolasholanda.ingestion.DataSources;
 import com.github.nicolasholanda.processing.SparkSessionFactory;
 import com.github.nicolasholanda.processing.warehouse.WarehouseConfig;
+import com.github.nicolasholanda.processing.warehouse.WarehouseReader;
 import com.github.nicolasholanda.processing.warehouse.WarehouseWriter;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-
 import static com.github.nicolasholanda.common.Columns.*;
 
 public class LoadWarehouseJob {
 
-    public static void run(DataSources sources, WarehouseWriter writer, WarehouseConfig config) {
-        truncateAll(config);
-        writer.append(sources.cities(), Tables.DIM_CITY);
-        writer.append(sources.salesmen(), Tables.DIM_SALESMAN);
-        writer.append(sources.products(), Tables.DIM_PRODUCT);
-        writer.append(buildFactSales(sources), Tables.FACT_SALES);
-    }
+    public static void run(DataSources sources, WarehouseWriter writer, WarehouseReader reader) {
+        writer.upsert(sources.cities(), Tables.DIM_CITY,
+            new String[]{"id"}, new String[]{"name", "state"});
+        writer.upsert(sources.salesmen(), Tables.DIM_SALESMAN,
+            new String[]{"id"}, new String[]{"name"});
+        writer.upsert(sources.products(), Tables.DIM_PRODUCT,
+            new String[]{"id"}, new String[]{"name", "category", "base_price"});
 
-    private static void truncateAll(WarehouseConfig config) {
-        try (Connection conn = DriverManager.getConnection(config.url(), config.user(), config.password());
-             Statement stmt = conn.createStatement()) {
-            stmt.execute("TRUNCATE fact_sales, dim_city, dim_salesman, dim_product CASCADE");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        long watermark = reader.maxLong(Tables.FACT_SALES, "id");
+        Dataset<Row> newSaleItems = sources.saleItems(watermark);
+
+        if (newSaleItems.isEmpty()) {
+            return;
         }
+
+        Dataset<Row> sales = sources.sales();
+        writer.append(buildFactSales(newSaleItems, sales), Tables.FACT_SALES);
     }
 
-    private static Dataset<Row> buildFactSales(DataSources sources) {
-        Dataset<Row> sales = sources.sales();
-        Dataset<Row> saleItems = sources.saleItems();
-
+    private static Dataset<Row> buildFactSales(Dataset<Row> saleItems, Dataset<Row> sales) {
         return saleItems
             .join(sales, saleItems.col(SaleItems.SALE_ID).equalTo(sales.col(Sales.ID)))
             .select(
@@ -57,6 +52,6 @@ public class LoadWarehouseJob {
     public static void main(String[] args) {
         SparkSession spark = SparkSessionFactory.create();
         WarehouseConfig config = WarehouseConfig.fromEnv();
-        run(new DataSources(spark), new WarehouseWriter(config), config);
+        run(new DataSources(spark), new WarehouseWriter(config), new WarehouseReader(spark, config));
     }
 }

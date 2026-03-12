@@ -26,8 +26,8 @@ public class DataSources {
         return jdbcReader.readSales();
     }
 
-    public Dataset<Row> saleItems() {
-        return jdbcReader.readSaleItems();
+    public Dataset<Row> saleItems(long minId) {
+        return jdbcReader.readSaleItems(minId);
     }
 
     public Dataset<Row> cities() {

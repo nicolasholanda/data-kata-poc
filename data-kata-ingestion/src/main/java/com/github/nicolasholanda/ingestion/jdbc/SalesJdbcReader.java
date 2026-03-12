@@ -18,8 +18,8 @@ public class SalesJdbcReader {
         return read("sales");
     }
 
-    public Dataset<Row> readSaleItems() {
-        return read("sale_items");
+    public Dataset<Row> readSaleItems(long minId) {
+        return read("(SELECT * FROM sale_items WHERE id > " + minId + ") AS filtered");
     }
 
     private Dataset<Row> read(String table) {
