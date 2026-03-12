@@ -84,7 +84,15 @@ services:
       bash -c "
         airflow db migrate &&
         (airflow connections delete spark_default 2>/dev/null || true) &&
-        airflow connections add spark_default --conn-type spark --conn-host 'spark://spark-master' --conn-port 7077
+        airflow connections add spark_default --conn-type spark --conn-host 'spark://spark-master' --conn-port 7077 &&
+        (airflow connections delete source_db 2>/dev/null || true) &&
+        airflow connections add source_db --conn-type postgres --conn-host source-db --conn-port 5432 --conn-schema salesdb --conn-login sales_user --conn-password sales_pass &&
+        (airflow connections delete warehouse_db 2>/dev/null || true) &&
+        airflow connections add warehouse_db --conn-type postgres --conn-host output-db --conn-port 5432 --conn-schema warehousedb --conn-login warehouse_user --conn-password warehouse_pass &&
+        (airflow connections delete soap_mock 2>/dev/null || true) &&
+        airflow connections add soap_mock --conn-type http --conn-host soap-mock --conn-port 8090 --conn-extra '{\"namespace\": \"http://soapmock.nicolasholanda.github.com/\", \"service_name\": \"SalesmanService\", \"port_name\": \"SalesmanServicePort\"}' &&
+        airflow variables set cities_file_path /data/files/cities.csv &&
+        airflow variables set products_file_path /data/files/products.csv
       "
 
   airflow-api-server:

@@ -1,15 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from airflow import DAG
+from airflow.models import Connection, Variable
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 
 JAR_PATH = "/opt/spark-apps/data-kata-processing-1.0.0-SNAPSHOT.jar"
-
-WAREHOUSE_ENV = {
-    "WAREHOUSE_URL": "jdbc:postgresql://output-db:5432/warehousedb",
-    "WAREHOUSE_USER": "warehouse_user",
-    "WAREHOUSE_PASSWORD": "warehouse_pass",
-}
+OPENLINEAGE_PACKAGES = "io.openlineage:openlineage-spark_2.13:1.44.0"
 
 SPARK_CONF = {
     "spark.driver.host": "airflow-scheduler",
@@ -20,7 +16,46 @@ SPARK_CONF = {
     "spark.openlineage.namespace": "data-kata",
 }
 
-OPENLINEAGE_PACKAGES = "io.openlineage:openlineage-spark_2.13:1.44.0"
+
+def jdbc_url(conn):
+    return f"jdbc:postgresql://{conn.host}:{conn.port}/{conn.schema}"
+
+
+def warehouse_env():
+    conn = Connection.get_connection_from_secrets("warehouse_db")
+    return {
+        "WAREHOUSE_URL": jdbc_url(conn),
+        "WAREHOUSE_USER": conn.login,
+        "WAREHOUSE_PASSWORD": conn.password,
+    }
+
+
+def source_db_env():
+    conn = Connection.get_connection_from_secrets("source_db")
+    return {
+        "SOURCE_DB_URL": jdbc_url(conn),
+        "SOURCE_DB_USER": conn.login,
+        "SOURCE_DB_PASSWORD": conn.password,
+    }
+
+
+def soap_env():
+    conn = Connection.get_connection_from_secrets("soap_mock")
+    extra = conn.extra_dejson
+    return {
+        "SOAP_SERVICE_URL": f"http://{conn.host}:{conn.port}/salesmanservice",
+        "SOAP_NAMESPACE": extra["namespace"],
+        "SOAP_SERVICE_NAME": extra["service_name"],
+        "SOAP_PORT_NAME": extra["port_name"],
+    }
+
+
+def file_env():
+    return {
+        "CITIES_FILE_PATH": Variable.get("cities_file_path"),
+        "PRODUCTS_FILE_PATH": Variable.get("products_file_path"),
+    }
+
 
 with DAG(
     dag_id="data_kata_pipeline",
@@ -28,8 +63,7 @@ with DAG(
     start_date=datetime(2024, 1, 1),
     catchup=False,
     default_args={
-        "retries": 1,
-        "retry_delay": timedelta(minutes=5),
+        "retries": 0,
     },
     params={
         "start_date": "{{ (data_interval_start - macros.timedelta(days=30)).strftime('%Y-%m-%d') }}",
@@ -46,16 +80,10 @@ with DAG(
         conf=SPARK_CONF,
         packages=OPENLINEAGE_PACKAGES,
         env_vars={
-            **WAREHOUSE_ENV,
-            "SOURCE_DB_URL": "jdbc:postgresql://source-db:5432/salesdb",
-            "SOURCE_DB_USER": "sales_user",
-            "SOURCE_DB_PASSWORD": "sales_pass",
-            "CITIES_FILE_PATH": "/data/files/cities.csv",
-            "PRODUCTS_FILE_PATH": "/data/files/products.csv",
-            "SOAP_SERVICE_URL": "http://soap-mock:8090/salesmanservice",
-            "SOAP_NAMESPACE": "http://soapmock.nicolasholanda.github.com/",
-            "SOAP_SERVICE_NAME": "SalesmanService",
-            "SOAP_PORT_NAME": "SalesmanServicePort",
+            **warehouse_env(),
+            **source_db_env(),
+            **file_env(),
+            **soap_env(),
         },
     )
 
@@ -67,7 +95,7 @@ with DAG(
         conf=SPARK_CONF,
         packages=OPENLINEAGE_PACKAGES,
         env_vars={
-            **WAREHOUSE_ENV,
+            **warehouse_env(),
             "START_DATE": "{{ params.start_date }}",
             "END_DATE": "{{ params.end_date }}",
             "TOP_N": "{{ params.top_n }}",
@@ -82,7 +110,7 @@ with DAG(
         conf=SPARK_CONF,
         packages=OPENLINEAGE_PACKAGES,
         env_vars={
-            **WAREHOUSE_ENV,
+            **warehouse_env(),
             "START_DATE": "{{ params.start_date }}",
             "END_DATE": "{{ params.end_date }}",
             "TOP_N": "{{ params.top_n }}",
