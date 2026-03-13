@@ -42,5 +42,11 @@
       <version>4.1.1</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>io.openlineage</groupId>
+      <artifactId>openlineage-java</artifactId>
+      <version>1.44.0</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
 </project>

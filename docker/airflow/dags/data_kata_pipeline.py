@@ -14,9 +14,6 @@ SPARK_CONF = {
     "spark.openlineage.transport.type": "http",
     "spark.openlineage.transport.url": "http://marquez-api:5000",
     "spark.openlineage.namespace": "data-kata",
-    "spark.openlineage.dataset.namespaceResolvers.data-kata.type": "hostList",
-    "spark.openlineage.dataset.namespaceResolvers.data-kata.hosts": '["output-db", "source-db"]',
-    "spark.openlineage.dataset.namespaceResolvers.data-kata.schema": "data-kata",
 }
 
 
